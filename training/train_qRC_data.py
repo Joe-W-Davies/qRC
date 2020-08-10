@@ -1,8 +1,9 @@
 import argparse
 import yaml
+#DEBUG
+#import os
+#print 'PWD:%s' % os.getcwd()
 import qRC.python.quantileRegression_chain as QReg_C
-
-
 
 def main(options):
 
@@ -16,7 +17,7 @@ def main(options):
     weightsDir = inp['weightsDir']
 
     if options.split is not None:
-        print 'Using split dfs for training two sets of weights!'
+        print ('Using split dfs for training two sets of weights!')
         df_name = df_name + '_spl{}.h5'.format(options.split)
         weightsDir = weightsDir + '/spl{}'.format(options.split)
 

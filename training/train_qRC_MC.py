@@ -1,7 +1,6 @@
 import argparse
 import yaml
-import qRC.python.quantileRegression_chain as QReg_C
-
+import qRC.python.quantileRegression_chain as QReg_C 
 
 def main(options):
 

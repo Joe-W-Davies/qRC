@@ -9,6 +9,7 @@ import yaml
 import os
 import ROOT as rt
 from root_pandas import read_root
+import uproot as upr
 
 from joblib import delayed, Parallel, parallel_backend, register_parallel_backend
 
@@ -52,6 +53,14 @@ class quantileRegression_chain(object):
             self.branches.remove('tagCovarianceIeIp')
             self.branches.remove('tagCovarianceIpIp')
 
+        #NOTE: added this variable re-map for re-reco 2017 samples - Joe
+        #NOTE: can remove once UL samples with same var names arrive
+        if year == '2017':
+            self.branches.remove('tagPhiWidth')
+            self.branches+=['tagPhiWidth_Sc']
+            self.branches.remove('tagEtaWidth')
+            self.branches+=['tagEtaWidth_Sc']
+
         self.ptmin  =  25.
         self.ptmax  =  150.
         self.etamin = -2.5
@@ -75,7 +84,7 @@ class quantileRegression_chain(object):
         cut : string, default ``None``
             Additional cut to apply while selecting events
         split : float, default ``None``
-            Number between 0 and 1 to determine the fraction of the training sample w.r.t to the total sample size
+            Number between 0 and 1 to determine the fraction of the training sample w.r.t to the total sample size (train/test split)
         rndm : int, default ``12345``
             Random seed for event shuffling
         Returns
@@ -84,20 +93,29 @@ class quantileRegression_chain(object):
             Dataframe from read *.root file
         """
         
+        print 'Applying var min/max cuts'
         if self.year == '2016' and 'Data' not in tree:
-            df = read_root(path,tree,columns=self.branches+['probePhoIso_corr'])
+            #df = read_root(path,tree,columns=self.branches+['probePhoIso_corr'])
+            df_file = upr.open(path)
+            df_tree = df_file[tree]
+            del df_file
+            df_tree.pandas.df(self.branches+['probePhoIso_corr']).query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax', inplace=True)
         else:
-            df = read_root(path,tree,columns=self.branches)
-        
+            #df = read_root(path,tree,columns=self.branches)
+            df_file = upr.open(path)
+            df_tree = df_file[tree]
+            del df_file
+            df = df_tree.pandas.df(self.branches).query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax', inplace=True)
+       
         print 'Dataframe with columns {}'.format(df.columns)
         index = np.array(df.index)
-        
+
         print 'Reshuffling events'
         np.random.seed(rndm)
         np.random.shuffle(index)
         df = df.ix[index]
 
-        df.query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax',inplace=True)
+        #df.query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax',inplace=True)
 
         if self.EBEE == 'EB':
             print 'Selecting events from EB'
@@ -108,7 +126,7 @@ class quantileRegression_chain(object):
         
         
         if cut is not None:
-            print 'Applying cut {}'.format(cut)
+            print 'Applying additional preselection cut {}'.format(cut)
             df.query(cut,inplace=True)
         
         df.reset_index(drop=True, inplace=True)
@@ -123,9 +141,12 @@ class quantileRegression_chain(object):
             print 'Number of events in training dataframe {}. Saving to {}/{}_(train/test).h5'.format(df_train.index.size,self.workDir,outname)
             df_train.to_hdf('{}/{}_train.h5'.format(self.workDir,outname),'df',mode='w',format='t')
             df_test.to_hdf('{}/{}_test.h5'.format(self.workDir,outname),'df',mode='w',format='t')
+            del df_train
+            del df_test
         else:
             print 'Number of events in dataframe {}. Saving to {}/{}.h5'.format(df.index.size,self.workDir,outname)
             df.to_hdf('{}/{}.h5'.format(self.workDir,outname),'df',mode='w',format='t')
+            
             
         return df
         

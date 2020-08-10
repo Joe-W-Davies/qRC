@@ -45,4 +45,5 @@ class Corrector:
       return np.array([ self.correctEvent(iev) for iev in xrange(self.Y.size) ]).ravel()
 
 def applyCorrection(mcclf,dataclf,X,Y,diz=False):
+   #instance is created and built-in method is called 
    return Corrector(mcclf,dataclf,X,Y,diz)()
