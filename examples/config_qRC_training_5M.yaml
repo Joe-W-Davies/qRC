@@ -12,10 +12,10 @@ variables:
   ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
 
 year:
-  2018
+  2017
 
 workDir:
-  /work/threiten/QReg/ReReco18ABCPromptD/
+  /vols/cms/jwd18/qRCSamples/dataframes/reReco/2017/
 
 weightsDir:
   weights_qRC_5M

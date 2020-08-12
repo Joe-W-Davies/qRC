@@ -9,7 +9,7 @@ dataframes:
     df_mc_EE_Iso_train.h5
 
 variables:
-  ['probePhoIso']
+  ['probeChIso03','probeChIso03worst']
 
 year:
   2017
@@ -18,7 +18,7 @@ workDir:
   /vols/cms/jwd18/qRCSamples/dataframes/reReco/2017/
 
 weightsDir:
-  weights_qRC_5M
+  weights_qRC_CI
 
 outDir:
-  weights_qRC_5M/final/
+  weights_qRC_CI/final/

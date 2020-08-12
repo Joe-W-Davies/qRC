@@ -10,9 +10,9 @@ def main(options):
 
     qRC = QReg_C.quantileRegression_chain(options.year, options.EBEE, options.outDir, ['probeR9'])
     
-    #print 'Reading MC for SS corrections ({})'.format(qRC.EBEE)
-    #df_ret = qRC.loadROOT('{}/outputMC.root'.format(options.sourceDir), 'tagAndProbeDumper/trees/DYJetsToLL_amcatnloFXFX_13TeV_All', 'df_mc_{}'.format(qRC.EBEE), 'tagPt>40 and tagR9>0.8 and mass>80 and mass<100 and probeChIso03<6 and tagScEta>-2.1 and tagScEta<2.1 and probePassEleVeto==0', options.split)
-    #del df_ret
+    print 'Reading MC for SS corrections ({})'.format(qRC.EBEE)
+    df_ret = qRC.loadROOT('{}/outputMC.root'.format(options.sourceDir), 'tagAndProbeDumper/trees/DYJetsToLL_amcatnloFXFX_13TeV_All', 'df_mc_{}'.format(qRC.EBEE), 'tagPt>40 and tagR9>0.8 and mass>80 and mass<100 and probeChIso03<6 and tagScEta>-2.1 and tagScEta<2.1 and probePassEleVeto==0', options.split)
+    del df_ret
     print 'Reading Data for SS corrections ({})'.format(qRC.EBEE)
     df_ret = qRC.loadROOT('{}/outputData.root'.format(options.sourceDir), 'tagAndProbeDumper/trees/Data_13TeV_All', 'df_data_{}'.format(qRC.EBEE), 'tagPt>40 and tagR9>0.8 and mass>80 and mass<100 and probeChIso03<6 and tagScEta>-2.1 and tagScEta<2.1 and probePassEleVeto==0', options.split)
     del df_ret

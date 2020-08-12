@@ -18,7 +18,7 @@ workDir:
   /vols/cms/jwd18/qRCSamples/dataframes/reReco/2017/
 
 weightsDir:
-  weights_qRC_5M
+  weights_qRC_PI
 
 outDir:
-  weights_qRC_5M/final/
+  weights_qRC_PI/final/

@@ -99,13 +99,13 @@ class quantileRegression_chain(object):
             df_file = upr.open(path)
             df_tree = df_file[tree]
             del df_file
-            df_tree.pandas.df(self.branches+['probePhoIso_corr']).query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax', inplace=True)
+            df = df_tree.pandas.df(self.branches+['probePhoIso_corr']).query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax')
         else:
             #df = read_root(path,tree,columns=self.branches)
             df_file = upr.open(path)
             df_tree = df_file[tree]
             del df_file
-            df = df_tree.pandas.df(self.branches).query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax', inplace=True)
+            df = df_tree.pandas.df(self.branches).query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax')
        
         print 'Dataframe with columns {}'.format(df.columns)
         index = np.array(df.index)
@@ -266,6 +266,7 @@ class quantileRegression_chain(object):
         elif key.startswith('data'):
             features = self.kinrho + self.vars[:self.vars.index(var)]
             if 'diz' in key:
+                #separate isolation vars with zero value 
                 X = self.data.loc[self.data[var]!=0,features]
                 Y = self.data.loc[self.data[var]!=0,var]
             else:
@@ -279,6 +280,7 @@ class quantileRegression_chain(object):
         print 'Training quantile regression on {} for {} with features {}'.format(key,var,features)
 
         with parallel_backend(self.backend):
+            #NOTE: why for q in q's, if we only sub one q at a time? maybe for some other functionality later..
             Parallel(n_jobs=len(self.quantiles),verbose=20)(delayed(trainClf)(q,maxDepth,minLeaf,X,Y,save=True,outDir='{}/{}'.format(self.workDir,weightsDir),name='{}_weights_{}_{}_{}'.format(name_key,self.EBEE,var,str(q).replace('.','p')),X_names=features,Y_name=var) for q in self.quantiles)
 
         
@@ -685,8 +687,10 @@ def trainClf(alpha,maxDepth,minLeaf,X,Y,save=False,outDir=None,name=None,X_names
     if save and (outDir is None or name is None or X_names is None or Y_name is None):
         raise TypeError('outDir, name, X_names and Y_name must not be NoneType if save=True')
     if save:
-        print 'Saving clf trained with features {} for {} to {}/{}.pkl'.format(X_names,Y_name,outDir,name)
+        if not path.isdir(outDir):
+            system('mkdir -p %s' %outDir)
         dic = {'clf': clf, 'X': X_names, 'Y': Y_name}
         pkl.dump(dic,gzip.open('{}/{}.pkl'.format(outDir,name),'wb'),protocol=pkl.HIGHEST_PROTOCOL)
+        print 'Saved clf trained with features {} for {} to {}/{}.pkl'.format(X_names,Y_name,outDir,name)
     
     return clf
