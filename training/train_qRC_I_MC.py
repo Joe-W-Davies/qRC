@@ -29,7 +29,6 @@ def main(options):
     #print qRC.MC.index.size
     qRC.trainAllMC(weightsDir=weightsDir,n_jobs=21)
 
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()

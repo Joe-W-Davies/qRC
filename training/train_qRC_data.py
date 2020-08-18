@@ -1,8 +1,5 @@
 import argparse
 import yaml
-#DEBUG
-#import os
-#print 'PWD:%s' % os.getcwd()
 import qRC.python.quantileRegression_chain as QReg_C
 
 def main(options):
@@ -22,7 +19,9 @@ def main(options):
         weightsDir = weightsDir + '/spl{}'.format(options.split)
 
     if year == '2017' or year == '2018':
-        columns = ['probePt','probeScEta','probePhi','rho','probeEtaWidth','probeSigmaIeIe','probePhiWidth','probeR9','probeS4','probeCovarianceIeIp']
+        #NOTE: re-labelled eta and phi width for ReReco training
+        #columns = ['probePt','probeScEta','probePhi','rho','probeEtaWidth','probeSigmaIeIe','probePhiWidth','probeR9','probeS4','probeCovarianceIeIp']
+        columns = ['probePt','probeScEta','probePhi','rho','probeEtaWidth_Sc','probeSigmaIeIe','probePhiWidth_Sc','probeR9','probeS4','probeCovarianceIeIp']
     elif year == '2016':
         columns = ['probePt','probeScEta','probePhi','rho','probeEtaWidth','probeSigmaIeIe','probePhiWidth','probeR9','probeS4','probeCovarianceIetaIphi']
     qRC = QReg_C.quantileRegression_chain(year,options.EBEE,workDir,variables)

@@ -10,7 +10,7 @@ import os
 import ROOT as rt
 from root_pandas import read_root
 import uproot as upr
-
+from os import path, system
 from joblib import delayed, Parallel, parallel_backend, register_parallel_backend
 
 from ..tmva.IdMVAComputer import IdMvaComputer, helpComputeIdMva
@@ -44,7 +44,8 @@ class quantileRegression_chain(object):
         self.quantiles = [0.01,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95,0.99]
         self.backend = 'loky'
         self.EBEE = EBEE
-        self.branches = ['probeScEta','probeEtaWidth','probeR9','weight','probeSigmaRR','tagChIso03','probeChIso03','probeS4','tagR9','tagPhiWidth','probePt','tagSigmaRR','probePhiWidth','probeChIso03worst','puweight','tagEleMatch','tagPhi','probeScEnergy','nvtx','probePhoIso','tagPhoIso','run','tagScEta','probeEleMatch','probeCovarianceIeIp','tagPt','rho','tagS4','tagSigmaIeIe','tagCovarianceIpIp','tagCovarianceIeIp','tagScEnergy','tagChIso03worst','probeSigmaIeIe','probePhi','mass','probeCovarianceIpIp','tagEtaWidth','probeHoE','probeFull5x5_e1x5','probeFull5x5_e5x5','probeNeutIso','probePassEleVeto']
+        #NOTE: replacing probePhi/EtaWidth_Sc -> probePhi/EtaWidth_Sc since former is unfilled in ReReco
+        self.branches = ['probeScEta','probeEtaWidth','probeEtaWidth_Sc','probePhiWidth_Sc','probeR9','weight','probeSigmaRR','tagChIso03','probeChIso03','probeS4','tagR9','tagPhiWidth','probePt','tagSigmaRR','probePhiWidth','probeChIso03worst','puweight','tagEleMatch','tagPhi','probeScEnergy','nvtx','probePhoIso','tagPhoIso','run','tagScEta','probeEleMatch','probeCovarianceIeIp','tagPt','rho','tagS4','tagSigmaIeIe','tagCovarianceIpIp','tagCovarianceIeIp','tagScEnergy','tagChIso03worst','probeSigmaIeIe','probePhi','mass','probeCovarianceIpIp','tagEtaWidth','probeHoE','probeFull5x5_e1x5','probeFull5x5_e5x5','probeNeutIso','probePassEleVeto']
 
         if year == '2016':
             self.branches = self.branches + ['probePass_invEleVeto','probeCovarianceIetaIphi','probeCovarianceIphiIphi','probeCovarianceIetaIphi','probeCovarianceIphiIphi']
@@ -60,6 +61,10 @@ class quantileRegression_chain(object):
             self.branches+=['tagPhiWidth_Sc']
             self.branches.remove('tagEtaWidth')
             self.branches+=['tagEtaWidth_Sc']
+            self.branches.remove('probePhiWidth')
+            self.branches+=['probePhiWidth_Sc']
+            self.branches.remove('probeEtaWidth')
+            self.branches+=['probeEtaWidth_Sc']
 
         self.ptmin  =  25.
         self.ptmax  =  150.
@@ -286,7 +291,7 @@ class quantileRegression_chain(object):
         
     def correctY(self, var, n_jobs=1, diz=False):
         """
-        Medthod to apply correction for  one variable in MC. BDTs for data and MC have to be loaded first, 
+        Medthod to apply correction for one variable in MC. BDTs for data and MC have to be loaded first, 
         using ``loadClfs``.
         Make sure to load the right files, variable names are not checked. If ``n_jobs`` is bigger than 1,
         correction will be run in parallel, with ipcluster backend if available, otherwise loky
@@ -311,8 +316,9 @@ class quantileRegression_chain(object):
         print "Features: X = ", features, " target y = ", var
         
         Y = Y.values.reshape(-1,1)
-        Z = np.hstack([X,Y])
+        Z = np.hstack([X,Y]) #concat Y values onto end of X matrix
 
+        #ch[:,:-1] gets X features of matrix since Y is last column. So ch[:,-1] gets last (Y) column
         with parallel_backend(self.backend):
             Ycorr = np.concatenate(Parallel(n_jobs=n_jobs,verbose=20)(delayed(applyCorrection)(self.clfs_mc,self.clfs_d,ch[:,:-1],ch[:,-1],diz=diz) for ch in np.array_split(Z,n_jobs) ) )
 
@@ -429,6 +435,8 @@ class quantileRegression_chain(object):
             Number of jobs used for applying the previously trained BDTs. Uses ipcluster if set up.
         """
         
+        # try to load both data and mc classifiers. 
+        #If MC has not been trained for a given  var, do training, then load
         for var in self.vars:
             try:
                 self.loadClfs(var,weightsDir)
@@ -465,7 +473,7 @@ class quantileRegression_chain(object):
         weightDir : string
             Directory where the weight file is stored. Relative to workDir
         name : string
-            Filename of the weight file
+            Filename of the weight file. Get all regressor info from this file.
         X_name : string, default ``None``
             List of variables used as inputs for the BDT training. Set automatically 
             if ``None``.

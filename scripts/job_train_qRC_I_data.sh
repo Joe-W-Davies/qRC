@@ -3,7 +3,11 @@
 echo SWITCH OFF DISPLAY
 export DISPLAY=
 
-source /t3home/threiten/jupyter_env.sh
+cd /vols/build/cms/jwd18/serviceTasks/CQR/CMSSW_10_2_0/src/
+eval `scramv1 runtime -sh`
+export PYTHONPATH=:/vols/build/cms/jwd18/serviceTasks/CQR/CMSSW_10_2_0/src/qRC/python
+echo $PYTHONPATH
+
 export OMP_NUM_THREADS=2
 
 config=$1
@@ -16,7 +20,7 @@ if [ ! -z "$6" ]
 then
     echo Doing split training!
     spl=$6
-    python /t3home/threiten/python/qRC/training/train_qRC_I_data.py -c ${config} -v ${variable} -q ${quantile} -N ${N_evts} -E ${EBEE} -s ${spl}
+    python ./qRC/training/train_qRC_I_data.py -c ${config} -v ${variable} -q ${quantile} -N ${N_evts} -E ${EBEE} -s ${spl}
 else
-    python /t3home/threiten/python/qRC/training/train_qRC_I_data.py -c ${config} -v ${variable} -q ${quantile} -N ${N_evts} -E ${EBEE}
+    python ./qRC/training/train_qRC_I_data.py -c ${config} -v ${variable} -q ${quantile} -N ${N_evts} -E ${EBEE}
 fi
