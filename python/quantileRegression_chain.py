@@ -54,17 +54,17 @@ class quantileRegression_chain(object):
             self.branches.remove('tagCovarianceIeIp')
             self.branches.remove('tagCovarianceIpIp')
 
-        #NOTE: added this variable re-map for re-reco 2017 samples - Joe
-        #NOTE: can remove once UL samples with same var names arrive
-        if year == '2017':
+        #NOTE: added this variable re-map for UL 2017 samples
+        #      re-mapped probe vars to old variable in loadROOT method to be compatible with existing var names
+        if year == '2017': 
             self.branches.remove('tagPhiWidth')
             self.branches+=['tagPhiWidth_Sc']
             self.branches.remove('tagEtaWidth')
             self.branches+=['tagEtaWidth_Sc']
-            self.branches.remove('probePhiWidth')
-            self.branches+=['probePhiWidth_Sc']
-            self.branches.remove('probeEtaWidth')
-            self.branches+=['probeEtaWidth_Sc']
+            #self.branches.remove('probePhiWidth')
+            #self.branches+=['probePhiWidth_Sc']
+            #self.branches.remove('probeEtaWidth')
+            #self.branches+=['probeEtaWidth_Sc']
 
         self.ptmin  =  25.
         self.ptmax  =  150.
@@ -111,6 +111,11 @@ class quantileRegression_chain(object):
             df_tree = df_file[tree]
             del df_file
             df = df_tree.pandas.df(self.branches).query('probePt>@self.ptmin and probePt<@self.ptmax and probeScEta>@self.etamin and probeScEta<@self.etamax and probePhi>@self.phimin and probePhi<@self.phimax')
+
+            #re-label the probe Eta and Phi width to be cautious to existing var names
+            #need to delete first column or get bad dimenstionality 
+            df.drop(columns=['probePhiWidth', 'probeEtaWidth'], inplace=True)
+            df.rename(columns={'probePhiWidth_Sc':'probePhiWidth','probeEtaWidth_Sc':'probeEtaWidth'}, inplace=True)
        
         print 'Dataframe with columns {}'.format(df.columns)
         index = np.array(df.index)
@@ -177,6 +182,7 @@ class quantileRegression_chain(object):
         -------
         df: pandas dataframe
         """
+
         
         if rsh:
             df = pd.read_hdf('{}/{}'.format(self.workDir,h5name), 'df', columns=columns)
@@ -203,6 +209,15 @@ class quantileRegression_chain(object):
         
         if df.index.size==0:
             raise ValueError('Wrong dataframe selected!')
+
+        #print'DF contained NaN for Chi03: {}'.format(np.isnan(df['probeChIso03'].values).any()) 
+        #print'Chi03 Number : {}'.format(df['probeChIso03'].isna().sum())   
+        #print'DF contained finite values for Chi03: {}'.format(np.isfinite(df['probeChIso03'].values).all()) 
+
+        #print'DF contained NaN for Chi03Worst: {}'.format(np.isnan(df['probeChIso03worst'].values).any()) 
+        #print'Chi03worst Number : {}'.format(df['probeChIso03worst'].isna().sum())   
+
+        #print'DF contained fnite values for Chi03Worst: {}'.format(np.isfinite(df['probeChIso03worst'].values).all()) 
 
         return df
 
@@ -256,6 +271,7 @@ class quantileRegression_chain(object):
             Directory the weight files will be saved to. Relative to ``workDir`` 
         """
         
+        #_shift vars are the shifted/corrected isolations
         if var not in self.vars+['{}_shift'.format(x) for x in self.vars]:
             raise ValueError('{} has to be one of {}'.format(var, self.vars))
         
@@ -346,15 +362,17 @@ class quantileRegression_chain(object):
         
         robSca = RobustScaler()
         features = self.kinrho + self.vars
+        #will define this further down
         target = '{}_corr_diff_scale'.format(var)
 
         if diz:
             querystr = '{0}!=0 and {0}_corr!=0'.format(var)
         else:
-            querystr = '{0}=={0}'.format(var)
+            querystr = '{0}=={0}'.format(var) #dummy str for compatbility
 
         df = self.MC.query(querystr)
 
+        #get difference between corr and uncorr variable and apply pre-prop scaler
         df['{}_corr_diff_scale'.format(var)] = robSca.fit_transform(np.array(df['{}_corr'.format(var)] - df[var]).reshape(-1,1))
         pkl.dump(robSca,gzip.open('{}/{}/scaler_mc_{}_{}_corr_diff.pkl'.format(self.workDir,weightsDir,self.EBEE,var),'wb'),protocol=pkl.HIGHEST_PROTOCOL)
 
@@ -522,9 +540,11 @@ class quantileRegression_chain(object):
         X = df.loc[:,features]
         if not all(qtls_names) in df.columns:
             mcqtls = [clf.predict(X) for clf in clfs]
+            #add quantile names and values for each evt in the df to pass to getCDFval() function
             for i in range(len(self.quantiles)):
                 df[qtls_names[i]] = mcqtls[i]
                 
+        #loop through evts
         return df.loc[:,[var] + qtls_names].apply(self._getCDFval,1,raw=True)
         
     def _getCDFval(self,row):
@@ -543,15 +563,19 @@ class quantileRegression_chain(object):
         qtls = np.array(row[1:].values,dtype=float)
         bins = self.quantiles
 
+        #get index of where the Y value is, in the quantiles (list)
         ind = np.searchsorted(qtls,Y)
 
+        #is Y is lower(higher) than lowest(highest) quantile then guess its value as cant interpolate
         if Y<=qtls[0]:
             return np.random.uniform(0,0.01)
         elif Y>qtls[-1]:
             return np.random.uniform(0.99,1)
 
+        #no need for data here as interpolating CDF in mc predicted with corrected regressors
+
         return np.interp(Y,qtls[ind-1:ind+1],bins[ind-1:ind+1])
-        
+       
     def computeIdMvas(self,mvas,weights,key,n_jobs=1,leg2016=False):
         """
         Method to evaluate several versions of the photon IdMVA. Calls ``computeIdMva``

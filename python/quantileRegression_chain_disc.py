@@ -19,7 +19,7 @@ from qRC.python.Shifter2D import Shifter2D, apply2DShift
 class quantileRegression_chain_disc(quantileRegression_chain):
 
     def trainp0tclf(self,var,key,weightsDir ='weights_qRC',n_jobs=1):
-        
+        #train the binary classifier for the single isolation variable
         if key == 'mc':
             df = self.MC
         elif key == 'data':
@@ -28,8 +28,9 @@ class quantileRegression_chain_disc(quantileRegression_chain):
             raise KeyError('Please use data or mc')
 
         features = self.kinrho
-
-        df['p0t_{}'.format(var)] = np.apply_along_axis(lambda x: 0 if x==0 else 1,0,df[var].reshape(1,-1))
+        #trying ti fix 1D pandas not reshaping by getting numpy rep
+        #df['p0t_{}'.format(var)] = np.apply_along_axis(lambda x: 0 if x==0 else 1,0,df[var].reshape(1,-1))
+        df['p0t_{}'.format(var)] = np.apply_along_axis(lambda x: 0 if x==0 else 1,0,df[var].values.reshape(1,-1))
         X = df.loc[:,features].values
         Y = df['p0t_{}'.format(var)].values
         clf = xgb.XGBClassifier(n_estimators=300,learning_rate=0.05,maxDepth=10,subsample=0.5,gamma=0, n_jobs=n_jobs)
@@ -119,6 +120,7 @@ class quantileRegression_chain_disc(quantileRegression_chain):
         
         features = self.kinrho
         X = self.MC.loc[:,features]
+        #two vars in Y column
         Y = self.MC.loc[:,varrs]
 
         if X.isnull().values.any():
@@ -140,11 +142,17 @@ class quantileRegression_chain_disc(quantileRegression_chain):
         
         
     def correctY(self,var,n_jobs=1):
-        
-        if len(self.vars)==1:
+        #NOTE: we run ShiftY2D once for ChIso (and once for phoIso), because the correction is simultaenous
+        #NOTE: the final quantile mapping is however done twice, in a chained fashion, with corrected vars
+
+        if len(self.vars)==1: #if doing photon iso (1 var)
             self.shiftY(var,n_jobs=n_jobs)
+        #else for charged isos (if looping through second iso, do not ShiftY2D again as BOTH are corr from
+        #the first shifting called for ChIso var 1)
         elif len(self.vars)>1 and '{}_shift'.format(var) not in self.MC.columns:
             self.shiftY2D(self.vars,n_jobs=n_jobs)
+        #correct Y tail (q_mapping) using previous corrector from the super/base class
+        #but also using corrected/shifted Iso vars (use ChIso var 1 in first correction and both corr in second)
         super(quantileRegression_chain_disc, self).correctY('{}_shift'.format(var), n_jobs=n_jobs, diz=True)
 
     def applyFinalRegression(self,var,n_jobs=1):
@@ -167,6 +175,7 @@ class quantileRegression_chain_disc(quantileRegression_chain):
 
     def trainAllMC(self,weightsDir,n_jobs=1):
         
+        #if we didnt train the tail regressors, train now and then load them in
         try:
             self.loadTailRegressors(self.vars,weightsDir)
         except IOError:
@@ -200,10 +209,11 @@ class quantileRegression_chain_disc(quantileRegression_chain):
     
     def trainFinalTailRegressor(self,var,weightsDir,weightsDirIn,n_jobs=1):
 
-        if len(self.vars) == 1:
+        if len(self.vars) == 1: #i.e. if doing photon iso
             self.loadClfs(var,weightsDirIn)
+            #this essentially returns our target column
             self.MC.loc[self.MC[var] != 0,'cdf_{}'.format(var)] = self._getCondCDF(self.MC.loc[self.MC[var] != 0,:],self.clfs_mc,self.kinrho,var)
-        elif len(self.vars) > 1:
+        elif len(self.vars) > 1: #i.e. if doing ChIso
             self.loadTailRegressors(self.vars,weightsDirIn)
             self.MC.loc[self.MC[var] != 0,'cdf_{}'.format(var)] = self._getCondCDF(self.MC.loc[self.MC[var] != 0,:],self.tail_clfs_mc[var],self.kinrho+[x for x in self.vars if not x == var],var)
 

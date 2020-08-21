@@ -15,12 +15,16 @@ class Shifter2D:
         self.p01_data = proba_data_clf[:,1]
         self.p11_data = proba_data_clf[:,2]
         
+        #for initial corrections  
         if len(mcqclf0)>1 and len(mcqclf1)>1:
+            #note he models loaded here were trained with uncorr variables
+            #we need to cdf still and have no choice on or first chain variable but to use uncorr
             self.mcqtls0 = np.array([clf.predict(np.hstack((X,Y[:,1].reshape(-1,1)))) for clf in mcqclf0])
             self.mcqtls1 = np.array([clf.predict(np.hstack((X,Y[:,0].reshape(-1,1)))) for clf in mcqclf1])
             self.tailReg0 = None
             self.tailReg1 = None
 
+        # for final corrections
         elif len(mcqclf0) == 1 and len(mcqclf1) == 1:
             self.tailReg0 = mcqclf0[0]
             self.tailReg1 = mcqclf1[0]

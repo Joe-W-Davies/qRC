@@ -25,11 +25,14 @@ def main(options):
     qRC_I = QReg_I.quantileRegression_chain_disc(year,options.EBEE,workDir,variables)
     qRC_I.quantiles = [options.quantile]
     qRC_I.loadDataDF(df_name,0,options.n_evts,rsh=False,columns=columns)
+    #train the regression part of the correction i.e. events with Iso != 0
     qRC_I.trainOnData(options.variable,weightsDir=weightsDir)
-    if len(qRC_I.vars)>1:
+    if len(qRC_I.vars)>1:                   #i.e. if we are training charged isos to get 3 class classifier
+        #if the classifier hasnt been trained for charged isos, train it!
         if not os.path.exists('{}/{}/data_clf_3Cat_{}_{}_{}.pkl'.format(workDir,weightsDir,options.EBEE,qRC_I.vars[0],qRC_I.vars[1])):
             qRC_I.train3Catclf(qRC_I.vars,'data',weightsDir=weightsDir)
-    else:
+    else                           :#i.e. if we are training charged isos to get binary classifier
+        #if the classifier hasnt been trained for photon isos, train it!
         if not os.path.exists('{}/{}/data_clf_p0t_{}_{}.pkl'.format(workDir,weightsDir,options.EBEE,options.variable)):
             qRC_I.trainp0tclf(options.variable,'data',weightsDir=weightsDir)
 
