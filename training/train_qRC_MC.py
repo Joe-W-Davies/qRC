@@ -25,7 +25,8 @@ def main(options):
         qRC.setupJoblib(options.backend,options.clusterid)
     qRC.loadMCDF(df_name_mc,0,options.n_evts,rsh=False)
     qRC.loadDataDF(df_name_data,0,options.n_evts,rsh=False)
-    qRC.trainAllMC(weightsDir=weightsDir,n_jobs=21)
+    qRC.trainAllMC(weightsDir=weightsDir,n_jobs=8)
+    print 'All regressors finished'
 
 
 if __name__ == "__main__":

@@ -301,8 +301,10 @@ class quantileRegression_chain(object):
         print 'Training quantile regression on {} for {} with features {}'.format(key,var,features)
 
         with parallel_backend(self.backend):
-            #NOTE: why for q in q's, if we only sub one q at a time? maybe for some other functionality later..
-            Parallel(n_jobs=len(self.quantiles),verbose=20)(delayed(trainClf)(q,maxDepth,minLeaf,X,Y,save=True,outDir='{}/{}'.format(self.workDir,weightsDir),name='{}_weights_{}_{}_{}'.format(name_key,self.EBEE,var,str(q).replace('.','p')),X_names=features,Y_name=var) for q in self.quantiles)
+            #Parallel(n_jobs=len(self.quantiles),verbose=20)(delayed(trainClf)(q,maxDepth,minLeaf,X,Y,save=True,outDir='{}/{}'.format(self.workDir,weightsDir),name='{}_weights_{}_{}_{}'.format(name_key,self.EBEE,var,str(q).replace('.','p')),X_names=features,Y_name=var) for q in self.quantiles)
+
+            #8 cores/subprocesses max per job on IC batch...
+            Parallel(n_jobs=8,verbose=20)(delayed(trainClf)(q,maxDepth,minLeaf,X,Y,save=True,outDir='{}/{}'.format(self.workDir,weightsDir),name='{}_weights_{}_{}_{}'.format(name_key,self.EBEE,var,str(q).replace('.','p')),X_names=features,Y_name=var) for q in self.quantiles)
 
         
     def correctY(self, var, n_jobs=1, diz=False):
@@ -320,25 +322,36 @@ class quantileRegression_chain(object):
         diz : bool, defautl ``False``
             Specify if variable to be corrected is discontinuous. Only for ``quantileRegression_chain_disc``
         """
-        
+        #try to read in corrected dataframe saved from a previous training
+        #will work as long as there is no reshulffling when reading MC DF in
         var_raw = var[:var.find('_')] if '_' in var else var
-        features = self.kinrho + ['{}_corr'.format(x) for x in self.vars[:self.vars.index(var_raw)]]
-        X = self.MC.loc[:,features]
-        Y = self.MC[var]
-        
-        if X.isnull().values.any():
-            raise KeyError('Correct {} first!'.format(self.vars[:self.vars.index(var)]))
+        try:
+            Ycorr = pd.read_hdf('{}/{}_corr.h5'.format(self.workDir,var), 'df', columns=var)
+            self.MC['{}_corr'.format(var_raw)] = Ycorr
+        except IOError:  
+            features = self.kinrho + ['{}_corr'.format(x) for x in self.vars[:self.vars.index(var_raw)]]
+            X = self.MC.loc[:,features]
+            Y = self.MC[var]
+            
+            if X.isnull().values.any():
+                raise KeyError('Correct {} first!'.format(self.vars[:self.vars.index(var)]))
 
-        print "Features: X = ", features, " target y = ", var
-        
-        Y = Y.values.reshape(-1,1)
-        Z = np.hstack([X,Y]) #concat Y values onto end of X matrix
+            print "Features: X = ", features, " target y = ", var
+            
+            Y = Y.values.reshape(-1,1)
+            Z = np.hstack([X,Y]) #concat Y values onto end of X matrix
 
-        #ch[:,:-1] gets X features of matrix since Y is last column. So ch[:,-1] gets last (Y) column
-        with parallel_backend(self.backend):
-            Ycorr = np.concatenate(Parallel(n_jobs=n_jobs,verbose=20)(delayed(applyCorrection)(self.clfs_mc,self.clfs_d,ch[:,:-1],ch[:,-1],diz=diz) for ch in np.array_split(Z,n_jobs) ) )
+            #ch[:,:-1] gets X features of matrix since Y is last column. So ch[:,-1] gets last (Y) column
+            print 'about to apply correction'
+            with parallel_backend(self.backend):
+                Ycorr = np.concatenate(Parallel(n_jobs=n_jobs,verbose=20)(delayed(applyCorrection)(self.clfs_mc,self.clfs_d,ch[:,:-1],ch[:,-1],diz=diz) for ch in np.array_split(Z,n_jobs) ) )
+            print 'finished applying correction'
 
-        self.MC['{}_corr'.format(var_raw)] = Ycorr
+            #save corrected df for reading in later, so that cont have to correct again for loaded classifier
+            #this is for staggered mc job submission at ic
+	    #note when running on test, this will overwrite "train" corrections done previously so be carefull
+            self.MC['{}_corr'.format(var_raw)] = Ycorr
+            pd.DataFrame(Ycorr).to_hdf('{}/{}_corr.h5'.format(self.workDir,var),'df',mode='w',format='t')
 
     def trainFinalRegression(self,var,weightsDir,diz=False,n_jobs=1):
         """
@@ -458,7 +471,10 @@ class quantileRegression_chain(object):
         for var in self.vars:
             try:
                 self.loadClfs(var,weightsDir)
+                print 'successfully loaded classifiers for var {}'.format(var)
             except IOError:
+                print 'did not find one of data/mc classifier for var {} in directory: {}'.format(var,weightsDir)
+                print 'training a new one...'
                 self.trainOnMC(var,weightsDir=weightsDir)
                 self.loadClfs(var,weightsDir)
 

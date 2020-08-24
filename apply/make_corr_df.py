@@ -17,6 +17,7 @@ def main(options):
     weightsDirs = inp['weightsDirs']
     finalWeightsDirs = inp['finalWeightsDirs']
 
+    #load test dataframes for mc and data
     if year == '2017':
         cols=["mass","probeScEnergy","probeScEta","probePhi","run","weight","weight_clf","rho","probeR9","probeSigmaIeIe","probePhiWidth","probeEtaWidth","probeCovarianceIeIp","probeCovarianceIpIp","probeS4","probePhoIso","probeChIso03","probeChIso03worst","probeSigmaRR","probeScPreshowerEnergy","probePt","tagPt","probePassEleVeto","tagScEta","probePass_invEleVeto"]
         treenameMC = '/tagAndProbeDumper/trees/DYJetsToLL_amcatnloFXFX_13TeV_All'
@@ -43,9 +44,11 @@ def main(options):
     else:
         qRC.loadDataDF(dataframes['data'][options.EBEE]['input'],0,options.n_evts,columns=cols)
 
+    #read classifiers and perform correction on SS variables
     if options.backend is not None:
         qRC.setupJoblib(options.backend,cluster_id = options.clusterid)
     for var in qRC.vars:
+        #if validating final regressors
         if options.final:
             qRC.loadFinalRegression(var,weightsDir=finalWeightsDirs['showerShapes'])
             qRC.loadScaler(var,weightsDir=finalWeightsDirs['showerShapes'])
@@ -53,6 +56,7 @@ def main(options):
         qRC.loadClfs(var,weightsDir=weightsDirs['showerShapes'])
         qRC.correctY(var,n_jobs=options.n_jobs)
 
+    #Do the same for the photon Iso (stochastic shifting plus q mapping)
     qRC_PI = qRCd.quantileRegression_chain_disc(year,options.EBEE,workDir,['probePhoIso'])
 
     qRC_PI.MC = qRC.MC
@@ -69,6 +73,7 @@ def main(options):
     qRC_PI.loadClfs('probePhoIso',weightsDir=weightsDirs['phoIso'])
     qRC_PI.correctY('probePhoIso',n_jobs=options.n_jobs)
     
+    #Do the same for the charged Iso (stochastic shifting plus q mapping)
     qRC_ChI = qRCd.quantileRegression_chain_disc(year,options.EBEE,workDir,chIsos)
 
     qRC_ChI.MC = qRC_PI.MC
@@ -88,6 +93,7 @@ def main(options):
         qRC_ChI.loadClfs(var,weightsDir=weightsDirs['chIsos'])
         qRC_ChI.correctY(var,n_jobs=options.n_jobs)
 
+    #some option pertaining to data?
     if options.mvas:
         if year == '2017':
             weights = ("/mnt/t3nfs01/data01/shome/threiten/QReg/ReReco17_data/camp_3_1_0/PhoIdMVAweights/HggPhoId_94X_barrel_BDT_v2.weights.xml","/mnt/t3nfs01/data01/shome/threiten/QReg/ReReco17_data/camp_3_1_0/PhoIdMVAweights/HggPhoId_94X_endcap_BDT_v2.weights.xml")
@@ -112,6 +118,7 @@ def main(options):
         qRC.computeIdMvas( mvas[:1],  weights,'data', n_jobs=options.n_jobs, leg2016=leg2016)
         qRC.computeIdMvas( mvas, weights,'mc', n_jobs=options.n_jobs , leg2016=leg2016)
 
+    #save df with all corrected indo in
     qRC_ChI.MC.to_hdf('{}/{}'.format(workDir,dataframes['mc'][options.EBEE]['output']),'df',mode='w',format='t')
     if options.mvas:
         qRC_ChI.data.to_hdf('{}/{}'.format(workDir,dataframes['data'][options.EBEE]['output']),'df',mode='w',format='t')

@@ -1,0 +1,47 @@
+dataframes:
+    mc: 
+        EE: 
+            input:
+                df_mc_EE_test.h5
+            output:
+                df_mc_EE_test_corr.h5
+        EB: 
+            input:
+                df_mc_EB_test.h5
+            output:
+                df_mc_EB_test_corr.h5
+
+    data:
+        EE: 
+            input:
+                df_data_EE_test.h5
+            output:
+                df_data_EE_test_out.h5
+        EB:  
+            input:
+                df_data_EB_test.h5
+            output:
+                df_data_EB_test_out.h5
+
+showerShapes:
+    ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
+
+chIsos:
+    ['probeChIso03','probeChIso03worst']
+
+year:
+    2017
+
+workDir:
+    /vols/cms/jwd18/qRCSamples/dataframes/UL/2017/
+
+weightsDirs:
+    showerShapes:
+        weights_qRC_SS_UL
+    chIsos:
+        weights_qRC_CI_UL
+    phoIso:
+        weights_qRC_PI_UL
+
+finalWeightsDirs:
+    weights_qRC_SS_UL/final/

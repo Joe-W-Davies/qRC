@@ -9,7 +9,8 @@ dataframes:
     df_mc_EE_train.h5
 
 variables:
-  ['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
+  #['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
+  ['probeCovarianceIeIp']
 
 year:
   2017
