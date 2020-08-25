@@ -93,17 +93,23 @@ class utils(object):
         clf = xgb.XGBClassifier(learning_rate=0.05,n_estimators=500,max_depth=10,gamma=0,n_jobs=n_jobs)
         features = ['probePt','rho','probeScEta','probePhi']
         if cut is not None:
-            X_data = df_data.query(cut, engine='python').sample(min(min(df_mc.query(cut, engine='python').index.size,df_data.query(cut, engine='python').index.size), 1000000)).loc[:,features].values
+            #take random 1m events as a X sample
+            X_data = df_data.query(cut, engine='python').sample(min(min(df_mc.query(cut, engine='python').index.size, df_data.query(cut, engine='python').index.size), 1000000)).loc[:,features].values
             X_mc = df_mc.query(cut, engine='python').sample(min(min(df_mc.query(cut, engine='python').index.size,df_data.query(cut, engine='python').index.size), 1000000)).loc[:,features].values
         else:
             X_data = df_data.sample(min(min(df_mc.index.size,df_data.index.size), 1000000)).loc[:,features].values
             X_mc = df_mc.sample(min(min(df_mc.index.size,df_data.index.size), 1000000)).loc[:,features].values
+
+
+        #join data and mc (along h axis)
         X = np.vstack([X_data,X_mc])
         y = np.vstack([np.ones((X_data.shape[0],1)),np.zeros((X_mc.shape[0],1))])
+
         X, y = shuffle(X,y)
     
         clf.fit(X,y)
         eps = 1.e-3
+        #take the ratio of p_data and p_mc, predicted on entire mc set, as correction (eps so non inf values)
         return np.apply_along_axis(lambda x: x[1]/(x[0]+eps), 1, clf.predict_proba(df_mc.loc[:,features].values))
 
 class systShift(object):

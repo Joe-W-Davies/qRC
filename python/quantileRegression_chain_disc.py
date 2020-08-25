@@ -182,13 +182,16 @@ class quantileRegression_chain_disc(quantileRegression_chain):
             self.loadTailRegressors(self.vars,weightsDir)
         except IOError:
             for var in self.vars:
+                print 'Training tail regressors for variable: {}'.format(var)
                 self.trainTailRegressors(var,weightsDir)
             self.loadTailRegressors(self.vars,weightsDir)
+            print 'Finished training tail regressors for all variables'
 
         for var in self.vars:
             try:
                 self.loadClfs(var,weightsDir)
             except IOError:
+                print 'Training full qRC regressors for variable: {}'.format(var)
                 self.trainOnMC(var,weightsDir=weightsDir)
                 self.loadClfs(var,weightsDir)
             try:
@@ -198,13 +201,16 @@ class quantileRegression_chain_disc(quantileRegression_chain):
                     self.loadp0tclf(var,weightsDir)
             except IOError:
                 if len(self.vars)>1:
+                    print 'Training 3 class classifier for: {}'.format(var)
                     self.train3Catclf(self.vars,key='mc',weightsDir=weightsDir)
                     self.load3Catclf(self.vars,weightsDir)
                 else:
                     self.trainp0tclf(var,key='mc',weightsDir=weightsDir)
                     self.loadp0tclf(var,weightsDir)
 
+            print 'Performing Stoachstic shifting for: {}'.format(var)
             self.correctY(var,n_jobs=n_jobs)
+            print 'Finished Stoachstic shifting for: {}'.format(var)
 
     def trainFinalRegression(self,var,weightsDir,n_jobs=1):
         super(quantileRegression_chain_disc,self).trainFinalRegression(var,weightsDir,diz=True,n_jobs=n_jobs)

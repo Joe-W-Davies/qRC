@@ -10,7 +10,7 @@ dataframes:
 
 variables:
   #['probeCovarianceIeIp','probeS4','probeR9','probePhiWidth','probeSigmaIeIe','probeEtaWidth']
-  ['probeCovarianceIeIp']
+  ['probeCovarianceIeIp','probeS4']
 
 year:
   2017
